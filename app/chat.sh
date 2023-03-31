@@ -22,6 +22,7 @@ error_exit()
 	[ ! -d ./log ] && error_exit 'Directory ./log is required.'
 	[ ! -f ./config/base_input ] && error_exit 'File ./config/base_input is required.'
 	LFs=$(printf '\\\n_');LFs=${LFs%_}
+	FF=$(printf '\f')
 }
 
 : 'Get arguments' && {
@@ -52,16 +53,24 @@ error_exit()
 
 		: 'Add next message' && {
 			cat "${next_message}" |
-			# 改行をエスケープ
+			# JSON用に特殊文字のエスケープ
+			# バックスラッシュ(\) : \\
+			sed 's/\\/\\\\/g' |
+			# ダブルクォーテーション(") : \"
+			sed 's/"/\\"/g' |
+			# タブ文字(\t) : \\t
+			sed 's/\t/\\t/g' |
+			# スラッシュ(/) : \\/
+			sed 's;/;\\/;g' |
+			# 復帰文字(\r) : \\r
+			sed 's/\r/\\r/g' |
+			# バックスペース(\b) : \\b
+			sed 's/\x08/\\b/g' |
+			# フォームフィード(\f) : \\f
+			sed "s/$FF/\\f/g" |
+			# 改行文字(\n) : \\n
 			sed 's/$/\\n/' |
 			tr -d '\n' |
-			# JSON用に特殊文字のエスケープ
-			sed 's/"/\\"/g' |
-			sed 's/\t/\\t/g' |
-			sed 's;/;\\/;g' |
-			sed 's/\b/\\b/g' |
-			sed 's/\f/\\f/g' |
-			sed 's/\r/\\r/g' |
 			# 余分な末尾改行を削除
 			sed 's/\\n$//' |
 			# JSON形式に変換
