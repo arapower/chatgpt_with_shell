@@ -1,0 +1,14 @@
+{
+  "name": "tmp.1zcyqviyao",
+  "version": "1.0.0",
+  "description": "",
+  "main": "count-token.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "gpt-3-encoder": "^1.1.4"
+  }
+}
