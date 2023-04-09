@@ -1,12 +1,17 @@
 #!/bin/sh
 set -u
 
-# Usage:
-#   Start new conversation
-#     ./chat.sh -n ${path_of_message_file}
-#
-#   Continue last conversation
-#     ./chat.sh ${path_of_message_file}
+usage () {
+	this_script="$0"
+	cat <<-EOF
+		Usage:
+		  # Start new conversation
+		  ${this_script} -n \${path_of_message_file}
+		
+		  # Continue last conversation
+		  ${this_script} \${path_of_message_file}
+	EOF
+}
 
 error_exit()
 {
@@ -15,36 +20,49 @@ error_exit()
 }
 
 : 'Setup' && {
+	current_dir="$(
+		d=${0%/*}/
+		[ "_${d}" = "_${0}/" ] && d='./'
+		# shellcheck disable=SC2164
+		cd "${d}"
+		pwd
+	)"
+
 	: 'Import API key' && {
-		[ ! -f ./config/api_key ] && error_exit './config/api_key is required.'
-		. ./config/api_key
+		[ ! -f "${current_dir}/config/api_key" ] && error_exit "${current_dir}/config/api_key is required."
+		. "${current_dir}/config/api_key"
 	}
-	[ ! -d ./log ] && error_exit 'Directory ./log is required.'
-	[ ! -f ./config/base_input ] && error_exit 'File ./config/base_input is required.'
+	[ ! -d "${current_dir}/log" ] && error_exit "Directory ${current_dir}/log is required."
+	[ ! -f "${current_dir}/config/base_input" ] && error_exit "File ${current_dir}/config/base_input is required."
 	LFs=$(printf '\\\n_');LFs=${LFs%_}
 	FF=$(printf '\f')
 }
 
 : 'Get arguments' && {
+	# Argument is required
+	if [ $# -eq 0 ]; then
+		usage 
+		exit 1
+	fi
 	: 'Set message log' && {
 		if [ "$1" = '-n' ]; then
-			message_log="./log/message_log_$(date +%s).jsonnet"
+			message_log="${current_dir}/log/message_log_$(date +%s).jsonnet"
 			shift
 		else
 			message_log=$(
-				find ./log -type f |
+				find "${current_dir}/log" -type f |
 				sort -nr |
-				grep '^\./log/message_log_[0-9][0-9]*.jsonnet$' |
+				grep "^${current_dir}/log/message_log_[0-9][0-9]*.jsonnet$" |
 				awk 'NR==1'
 			)
 			[ "_${message_log}" = '_' ] && {
-				message_log="./log/message_log_$(date +%s).jsonnet"
+				message_log="${current_dir}/log/message_log_$(date +%s).jsonnet"
 			}
 		fi
 	}
 
 	next_message="$1"
-	base_input="./config/base_input"
+	base_input="${current_dir}/config/base_input"
 }
 
 : 'Main' && {
@@ -102,6 +120,20 @@ error_exit()
 			-H "Content-Type: application/json" \
 			-H "Authorization: Bearer $OPENAI_API_KEY" \
 			-d "@${request}" > "${response}"
+	}
+
+	: 'Error' && {
+		finish_reason=$(cat "$response" | jq -r '.choices[0].finish_reason')
+
+		if [ "$finish_reason" = "content_filter" ]; then
+			error_exit "Omitted content due to a flag from content filters"
+		elif [ "$finish_reason" = "null" ]; then
+			error_exit "API response still in progress or incomplete"
+		fi
+
+		if [ "$finish_reason" != "stop" ]; then
+			error_exit "Unknown finish_reason"
+		fi
 	}
 
 	: 'Extract response message' && {
