@@ -126,13 +126,16 @@ error_exit()
 		finish_reason=$(cat "$response" | jq -r '.choices[0].finish_reason')
 
 		if [ "$finish_reason" = "content_filter" ]; then
-			error_exit "Omitted content due to a flag from content filters"
+			response_content="$(cat "$response")"
+			error_exit "Omitted content due to a flag from content filters" "API Response: ${response_content}"
 		elif [ "$finish_reason" = "null" ]; then
-			error_exit "API response still in progress or incomplete"
+			response_content="$(cat "$response")"
+			error_exit "API response still in progress or incomplete" "API Response: ${response_content}"
 		fi
 
 		if [ "$finish_reason" != "stop" ]; then
-			error_exit "Unknown finish_reason"
+			response_content="$(cat "$response")"
+			error_exit "Unknown finish_reason" "API Response: ${response_content}"
 		fi
 	}
 
