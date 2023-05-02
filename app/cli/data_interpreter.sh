@@ -18,9 +18,9 @@
 }
 
 : 'Execute' && {
-	echo '####'
-	echo "Prompt: ${tmp_message}"
-	echo '####'
+	echo '####' >&2
+	echo "Prompt: ${tmp_message}" >&2
+	echo '####' >&2
 
 	"${current_dir}/../chat.sh" -n "${tmp_message}"
 }
