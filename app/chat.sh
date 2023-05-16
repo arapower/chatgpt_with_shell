@@ -125,17 +125,20 @@ error_exit()
 	: 'Error' && {
 		finish_reason=$(cat "$response" | jq -r '.choices[0].finish_reason')
 
-		if [ "$finish_reason" = "content_filter" ]; then
+		if [ "$finish_reason" = "length" ]; then
 			response_content="$(cat "$response")"
-			error_exit "Omitted content due to a flag from content filters" "API Response: ${response_content}"
+			error_exit "Incomplete model output due to max_tokens parameter or token limit." "API Response: ${response_content}"
 		elif [ "$finish_reason" = "null" ]; then
 			response_content="$(cat "$response")"
-			error_exit "API response still in progress or incomplete" "API Response: ${response_content}"
+			error_exit "Omitted content due to a flag from content filters." "API Response: ${response_content}"
+		elif [ "$finish_reason" = "null" ]; then
+			response_content="$(cat "$response")"
+			error_exit "API response still in progress or incomplete." "API Response: ${response_content}"
 		fi
 
 		if [ "$finish_reason" != "stop" ]; then
 			response_content="$(cat "$response")"
-			error_exit "Unknown finish_reason" "API Response: ${response_content}"
+			error_exit "Unknown finish_reason." "API Response: ${response_content}"
 		fi
 	}
 
